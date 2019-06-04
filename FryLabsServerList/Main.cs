@@ -1,9 +1,5 @@
-﻿using Harmony;
-using System;
-using System.Net;
-using System.Net.NetworkInformation;
+using Harmony;
 using System.Reflection;
-using System.Text;
 using UnityModManagerNet;
 
 namespace FryLabsServerList

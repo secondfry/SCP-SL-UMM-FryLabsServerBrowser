@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityModManagerNet;
 
 namespace FryLabsServerList
@@ -30,9 +29,6 @@ namespace FryLabsServerList
     {
       get { return mInstance; }
     }
-
-    // Block game screen space
-    private GameObject mCanvas = null;
 
     // Check if we are opened
     public bool Opened = false;
@@ -99,7 +95,6 @@ namespace FryLabsServerList
       {
         UI.scrollPos.y += Input.GetAxisRaw("Mouse ScrollWheel");
       }
-
 
       if (!UI.isButtonStyleInitialized)
       {
@@ -196,31 +191,6 @@ namespace FryLabsServerList
         Console.WriteLine("ToggleWindow failed");
         Console.WriteLine(e.ToString());
       }
-    }
-
-    private void BlockGameUI(bool value)
-    {
-      if (!value)
-      {
-        if (mCanvas == null)
-        {
-          return;
-        }
-
-        Destroy(mCanvas);
-        return;
-      }
-
-      mCanvas = new GameObject("", typeof(Canvas), typeof(GraphicRaycaster));
-      mCanvas.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
-      mCanvas.GetComponent<Canvas>().sortingOrder = Int16.MaxValue;
-      DontDestroyOnLoad(mCanvas);
-      var panel = new GameObject("", typeof(Image));
-      panel.transform.SetParent(mCanvas.transform);
-      panel.GetComponent<RectTransform>().anchorMin = new Vector2(1, 0);
-      panel.GetComponent<RectTransform>().anchorMax = new Vector2(0, 1);
-      panel.GetComponent<RectTransform>().offsetMin = Vector2.zero;
-      panel.GetComponent<RectTransform>().offsetMax = Vector2.zero;
     }
   }
 }

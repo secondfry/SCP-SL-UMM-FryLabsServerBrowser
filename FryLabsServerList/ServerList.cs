@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -14,14 +13,6 @@ using UnityEngine.Networking;
 
 namespace FryLabsServerList
 {
-  public class SortServerDataClass : IComparer<ServerData>
-  {
-    int IComparer<ServerData>.Compare(ServerData a, ServerData b)
-    {
-      return (int)(a.Ping - b.Ping);
-    }
-  }
-
   class ServerList
   {
     // Endpoint
@@ -85,6 +76,7 @@ namespace FryLabsServerList
         ret.port = int.Parse(parts[1]);
 
         var fav = false;
+        // TODO
         // try
         // {
         //   if (this._window.favourites.TryGetValue(ret.Address, out ServerData cache))
@@ -98,6 +90,7 @@ namespace FryLabsServerList
         ret.serverInfo = ServerInfo.Parse(parts[2]);
         ret.serverPlayers = ServerPlayers.Parse(parts[3]);
 
+        // FIXME probably remove forever
         // ServerList.PingTCP(ret, ServerList.PING_THRESHOLD);
         ServerList.PingICMP(ret, ServerList.PING_THRESHOLD, pingBuffer, pingOptions);
 

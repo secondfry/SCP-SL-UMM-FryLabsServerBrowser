@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -100,6 +100,7 @@ namespace FryLabsServerList
     public double pingTCP { get; set; }
     public int counter { get; set; }
 
+    // TODO
     // public bool IsFavourite {
     //   get { return this._isFavourite; }
     //   set {
@@ -141,8 +142,10 @@ namespace FryLabsServerList
       get { return this.pingTCP != 0 ? this.pingTCP : this.pingICMP; }
     }
 
+    // TODO
     // public event PropertyChangedEventHandler PropertyChanged;
 
+    // TODO
     // private void NotifyPropertyChanged([CallerMemberName] String propertyName = "") {
     //   if (PropertyChanged != null) {
     //     PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
