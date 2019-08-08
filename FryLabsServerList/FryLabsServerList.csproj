@@ -11,7 +11,7 @@
     <AssemblyName>FryLabsServerList</AssemblyName>
     <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
+    <Deterministic>false</Deterministic>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -103,13 +103,18 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>if not exist "$(SolutionDir)\dist\" mkdir "$(SolutionDir)\dist\"
-copy "$(SolutionDir)\Info.json" "$(SolutionDir)\dist\"
-copy "$(TargetDir)\$(TargetName).dll" "$(SolutionDir)\dist\"
+echo copy /Y "$(SolutionDir)\Info.json" "$(SolutionDir)\dist\"
+copy /Y "$(SolutionDir)\Info.json" "$(SolutionDir)\dist\"
+echo copy /Y "$(TargetDir)\$(TargetName).dll" "$(SolutionDir)\dist\"
+copy /Y "$(TargetDir)\$(TargetName).dll" "$(SolutionDir)\dist\"
 
-set STEAM_PATH=F:\Steam\SteamApps\common\SCP Secret Laboratory
+set STEAM_PATH=F:\Steam\SteamApps\common\SCP Secret Laboratory Debug
 if exist %25STEAM_PATH%25 (
-  copy "$(TargetDir)\$(TargetName).dll" "%25STEAM_PATH%25\Mods\FryLabsServerBrowser\"
-  copy "$(TargetDir)\$(TargetName).pdb" "%25STEAM_PATH%25\Mods\FryLabsServerBrowser\"
+  echo copy /Y "$(TargetDir)\$(TargetName).dll" "%25STEAM_PATH%25\Mods\FryLabsServerBrowser\"
+  copy /Y "$(TargetDir)\$(TargetName).dll" "%25STEAM_PATH%25\Mods\FryLabsServerBrowser\"
+  echo copy /Y "$(TargetDir)\$(TargetName).pdb" "%25STEAM_PATH%25\Mods\FryLabsServerBrowser\"
+  copy /Y "$(TargetDir)\$(TargetName).pdb" "%25STEAM_PATH%25\Mods\FryLabsServerBrowser\"
+  "%25STEAM_PATH%25\Mods\FryLabsServerBrowser\!pdb2mdb.bat"
 )</PostBuildEvent>
   </PropertyGroup>
 </Project>

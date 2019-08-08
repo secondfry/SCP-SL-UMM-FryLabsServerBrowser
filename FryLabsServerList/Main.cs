@@ -2,8 +2,12 @@ using Harmony;
 using System.Reflection;
 using UnityModManagerNet;
 
+
 namespace FryLabsServerList
 {
+#if DEBUG
+  [EnableReloading]
+#endif
   static class Main
   {
     // UnityModManager
@@ -24,8 +28,22 @@ namespace FryLabsServerList
 
       UI.status = "Loaded!";
 
+#if DEBUG
+      modEntry.OnUnload = Main.Unload;
+#endif
+
       return true;
     }
+
+#if DEBUG
+    static bool Unload(UnityModManager.ModEntry modEntry)
+    {
+      var harmony = HarmonyInstance.Create(modEntry.Info.Id);
+      harmony.UnpatchAll();
+
+      return true;
+    }
+#endif
 
     static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
     {
