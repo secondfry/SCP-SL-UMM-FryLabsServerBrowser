@@ -1,0 +1,8 @@
+{
+  "Id": "FryLabsServerBrowser",
+  "DisplayName": "Fry Labs Server Browser",
+  "Author": "Second_Fry#6085",
+  "Version": "0.1.1",
+  "AssemblyName": "FryLabsServerList.dll",
+  "EntryMethod": "FryLabsServerList.Main.Load"
+}

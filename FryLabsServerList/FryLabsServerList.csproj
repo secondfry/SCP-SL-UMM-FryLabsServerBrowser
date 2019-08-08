@@ -47,6 +47,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="0Harmony-1.2">
@@ -100,4 +101,9 @@
     <Compile Include="UI.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>if not exist "$(SolutionDir)\dist\" mkdir "$(SolutionDir)\dist\"
+copy "$(SolutionDir)\Info.json" "$(SolutionDir)\dist\"
+copy "$(TargetDir)\$(TargetName).dll" "$(SolutionDir)\dist\"</PostBuildEvent>
+  </PropertyGroup>
 </Project>

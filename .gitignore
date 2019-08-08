@@ -423,3 +423,6 @@ ASALocalRun/
 
 # MSBuild Binary and Structured Log
 *.binlog
+
+### Personal
+dist
