@@ -104,6 +104,12 @@
   <PropertyGroup>
     <PostBuildEvent>if not exist "$(SolutionDir)\dist\" mkdir "$(SolutionDir)\dist\"
 copy "$(SolutionDir)\Info.json" "$(SolutionDir)\dist\"
-copy "$(TargetDir)\$(TargetName).dll" "$(SolutionDir)\dist\"</PostBuildEvent>
+copy "$(TargetDir)\$(TargetName).dll" "$(SolutionDir)\dist\"
+
+set STEAM_PATH=F:\Steam\SteamApps\common\SCP Secret Laboratory
+if exist %25STEAM_PATH%25 (
+  copy "$(TargetDir)\$(TargetName).dll" "%25STEAM_PATH%25\Mods\FryLabsServerBrowser\"
+  copy "$(TargetDir)\$(TargetName).pdb" "%25STEAM_PATH%25\Mods\FryLabsServerBrowser\"
+)</PostBuildEvent>
   </PropertyGroup>
 </Project>
