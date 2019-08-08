@@ -3,14 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
-using System.Net.NetworkInformation;
-using Ping = System.Net.NetworkInformation.Ping;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
-using System.Threading.Tasks;
 
 namespace FryLabsServerList
 {
@@ -26,7 +22,6 @@ namespace FryLabsServerList
     // Ping
     private const int PING_THRESHOLD = 500;
     private const int SHOW_THRESHOLD = 500;
-    private static List<Ping> pings = new List<Ping>();
     private static List<Task> unityPingTasks = new List<Task>();
     private static CancellationTokenSource cts;
 
@@ -39,12 +34,14 @@ namespace FryLabsServerList
       UI.status = "Requesting server data...";
 
       ServerList.servers.Clear();
-      ServerList.pings.Clear();
+      ServerList.unityPingTasks.Clear();
+
       ServerList.counter = 0;
 
       using (var client = new WebClient())
       {
-        client.DownloadStringCompleted += (s, e) => {
+        client.DownloadStringCompleted += (s, e) =>
+        {
           if (e.Error != null)
           {
             UI.status = "Requesting server data... Error!";
@@ -63,11 +60,6 @@ namespace FryLabsServerList
     {
       ServerList.cts?.Dispose();
       ServerList.cts = new CancellationTokenSource();
-
-      // Prepare ping
-      string pingData = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-      byte[] pingBuffer = Encoding.ASCII.GetBytes(pingData);
-      PingOptions pingOptions = new PingOptions(64, true);
 
       var strings = ServerList._serversRaw.Split(new string[] { "<br>" }, StringSplitOptions.RemoveEmptyEntries);
       foreach (var data in strings)
@@ -105,114 +97,7 @@ namespace FryLabsServerList
 
     private static void PingStop()
     {
-      foreach (var p in ServerList.pings)
-      {
-        p.SendAsyncCancel();
-      }
       ServerList.cts.Cancel();
-    }
-
-    // FIXME this is blocked by some providers as "ICMP flood"
-    // FIXME make selector between this and Unity
-    private static void PingICMPAsync(ServerData ret, int pingTimeout, byte[] pingBuffer, PingOptions pingOptions)
-    {
-      using (var ping = new Ping())
-      {
-        ServerList.pings.Add(ping);
-
-        string prefix = String.Format("[P {0}][IP:p {1}:{2}]", ret.Project, ret.IP, ret.port);
-
-        ping.PingCompleted += (s, e) => {
-          if (e.Cancelled)
-          {
-            Console.WriteLine(String.Format(
-              "{0} Ping was cancelled.",
-              prefix
-            ));
-
-            ((AutoResetEvent)e.UserState).Set();
-            return;
-          }
-
-          if (e.Error != null)
-          {
-            Console.WriteLine(String.Format(
-              "{0} Error! {1}",
-              prefix,
-              e.Error.ToString()
-            ));
-
-            ((AutoResetEvent)e.UserState).Set();
-            return;
-          }
-
-          ServerList.ProcessICMPPing(ret, pingTimeout, e.Reply);
-          ((AutoResetEvent)e.UserState).Set();
-        };
-
-        AutoResetEvent pingWaiter = new AutoResetEvent(false);
-        try
-        {
-          ping.SendAsync(IPAddress.Parse(ret.IP), pingTimeout, pingBuffer, pingOptions, pingWaiter);
-          return;
-        }
-        catch (FormatException) {
-          // server IP was probably server NS
-          // we will retry call directly
-        }
-        catch (SocketException e)
-        {
-          Console.WriteLine(e.ToString());
-          return;
-        }
-
-        try
-        {
-          ping.SendAsync(ret.IP, pingTimeout, pingBuffer, pingOptions, pingWaiter);
-          return;
-        }
-        catch (SocketException e)
-        {
-          Console.WriteLine(e.ToString());
-          return;
-        }
-      }
-    }
-
-    private static void ProcessICMPPing(ServerData sData, int pingTimeout, PingReply reply)
-    {
-      string prefix = String.Format("[P {0}][IP:p {1}:{2}]", sData.Project, sData.IP, sData.port);
-
-      Console.WriteLine(String.Format(
-        "{0} Reply status: {1}",
-        prefix,
-        reply.Status.ToString()
-      ));
-
-      if (reply.Status == IPStatus.TimedOut)
-      {
-        sData.pingICMP = pingTimeout;
-      }
-      else
-      {
-        sData.pingICMP = reply.RoundtripTime;
-      }
-
-      if (sData.pingICMP < ServerList.SHOW_THRESHOLD)
-      {
-        ServerList.servers.Add(sData);
-        ServerList.ShakeData();
-      }
-      else
-      {
-        Console.WriteLine(String.Format(
-          "[P {0}][IP:p {1}:{2}] Server is out of reach. Ping: {3}",
-          sData.Project,
-          sData.IP,
-          sData.port,
-          sData.pingICMP
-        ));
-      }
     }
 
     private static async void PingUnity(ServerData sData, int pingTimeout)
@@ -259,7 +144,7 @@ namespace FryLabsServerList
 
     private static async Task<int> PingUnityAsync(string IP)
     {
-      UnityEngine.Ping ping = new UnityEngine.Ping(IP);
+      Ping ping = new Ping(IP);
       while (!ping.isDone)
       {
         await Task.Delay(1000, ServerList.cts.Token);
@@ -270,7 +155,8 @@ namespace FryLabsServerList
 
     public static void ShakeData()
     {
-      ServerList.servers.Sort((a, b) => {
+      ServerList.servers.Sort((a, b) =>
+      {
         var diffPing = (int)(a.Ping - b.Ping);
         if (diffPing != 0)
           return diffPing;
@@ -285,7 +171,7 @@ namespace FryLabsServerList
         {
           // We are kinda respecting original sort order
           return a.counter - b.counter;
-        } 
+        }
 
         var diffName = string.Compare(a.Info, b.Info);
         if (diffName != 0)
