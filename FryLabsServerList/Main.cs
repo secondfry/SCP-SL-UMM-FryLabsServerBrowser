@@ -62,7 +62,7 @@ namespace FryLabsServerList
       FryLabsServerList.UI.Instance.IsModEnabled = Main.enabled;
       FryLabsServerList.UI.Instance.Opened = true;
 
-      if (ServerList.servers.Count == 0)
+      if (ServerList.serversDictionary.Count == 0)
         ServerList.Search();
 
       // Don't run original function if our browser is enabled

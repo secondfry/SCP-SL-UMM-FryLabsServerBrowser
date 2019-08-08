@@ -10,7 +10,7 @@ namespace FryLabsServerList
     public string pastebin;
     public string versionVanilla;
     public string versionSmod;
-    public string discord { get; set; }
+    public string discord;
 
     public static ServerInfo Parse(string base64)
     {
@@ -91,14 +91,13 @@ namespace FryLabsServerList
 
   public struct ServerData
   {
-    public bool IsFavourite { get; set; }
-    public string IP { get; set; }
-    public int port { get; set; }
-    public ServerInfo serverInfo { get; set; }
-    public ServerPlayers serverPlayers { get; set; }
-    public long pingICMP { get; set; }
-    public double pingTCP { get; set; }
-    public int counter { get; set; }
+    public bool IsFavourite;
+    public string IP;
+    public int port;
+    public ServerInfo serverInfo;
+    public ServerPlayers serverPlayers;
+    public int ping;
+    public int counter;
 
     // TODO
     // public bool IsFavourite {
@@ -137,9 +136,9 @@ namespace FryLabsServerList
       get { return this.serverPlayers.current + " / " + this.serverPlayers.total; }
     }
 
-    public double Ping
+    public string Ping
     {
-      get { return this.pingTCP != 0 ? this.pingTCP : this.pingICMP; }
+      get { return this.ping.ToString(); }
     }
 
     // TODO

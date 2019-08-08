@@ -17,11 +17,12 @@ namespace FryLabsServerList
 
     // Servers
     private static string _serversRaw;
-    public static List<ServerData> servers = new List<ServerData>();
+    public static Dictionary<string, ServerData> serversDictionary = new Dictionary<string, ServerData>();
+    public static List<ServerData> serversListProcessed = new List<ServerData>();
 
     // Ping
     private const int PING_THRESHOLD = 500;
-    private const int SHOW_THRESHOLD = 500;
+    private const int SHOW_THRESHOLD = 150;
     private static List<Task> unityPingTasks = new List<Task>();
     private static CancellationTokenSource cts;
 
@@ -33,7 +34,8 @@ namespace FryLabsServerList
     {
       UI.status = "Requesting server data...";
 
-      ServerList.servers.Clear();
+      ServerList.serversDictionary.Clear();
+      ServerList.serversListProcessed.Clear();
       ServerList.unityPingTasks.Clear();
 
       ServerList.counter = 0;
@@ -50,7 +52,9 @@ namespace FryLabsServerList
 
           UI.status = "Requesting server data... Complete!";
           ServerList._serversRaw = e.Result;
+          ServerList.AddHardcoded();
           ServerList.ServersParse();
+          ServerList.ServersPingCheck();
         };
         client.DownloadStringAsync(ServerList.endpointLobby);
       }
@@ -58,9 +62,6 @@ namespace FryLabsServerList
 
     private static async void ServersParse()
     {
-      ServerList.cts?.Dispose();
-      ServerList.cts = new CancellationTokenSource();
-
       var strings = ServerList._serversRaw.Split(new string[] { "<br>" }, StringSplitOptions.RemoveEmptyEntries);
       foreach (var data in strings)
       {
@@ -88,9 +89,34 @@ namespace FryLabsServerList
         sData.serverInfo = ServerInfo.Parse(parts[2]);
         sData.serverPlayers = ServerPlayers.Parse(parts[3]);
 
-        // ServerList.PingICMPAsync(sData, ServerList.PING_THRESHOLD, pingBuffer, pingOptions);
-        ServerList.PingUnity(sData, ServerList.PING_THRESHOLD);
+        sData.ping = ServerList.PING_THRESHOLD;
 
+        ServerList.serversDictionary.Add(sData.Address, sData);
+        await Task.Delay(0);
+      }
+    }
+
+    private static void AddHardcoded()
+    {
+      var sInfo = new ServerInfo();
+      sInfo.discord = "discord.gg/frylabs";
+      sInfo.text = "[RU] Fry Labs [default hardcoded server @ secondfry.ru:2212]";
+      var sData = new ServerData();
+      sData.counter = ServerList.counter++;
+      sData.IP = "secondfry.ru";
+      sData.port = 2212;
+      sData.serverInfo = sInfo;
+      ServerList.serversDictionary.Add(sData.Address, sData);
+    }
+
+    private static async void ServersPingCheck()
+    {
+      ServerList.cts?.Dispose();
+      ServerList.cts = new CancellationTokenSource();
+
+      foreach (var server in ServerList.serversDictionary.Values)
+      {
+        ServerList.PingUnity(server, ServerList.PING_THRESHOLD);
         await Task.Delay(0);
       }
     }
@@ -118,28 +144,19 @@ namespace FryLabsServerList
 
       try
       {
-        sData.pingICMP = await pingTask;
+        sData.ping = await pingTask;
       }
       catch (OperationCanceledException)
       {
-        sData.pingICMP = pingTimeout;
+        sData.ping = pingTimeout;
       }
 
-      if (sData.pingICMP < ServerList.SHOW_THRESHOLD)
+      ServerList.serversDictionary.Remove(sData.Address);
+      if (sData.ping < ServerList.SHOW_THRESHOLD)
       {
-        ServerList.servers.Add(sData);
-        ServerList.ShakeData();
+        ServerList.serversListProcessed.Add(sData);
       }
-      else
-      {
-        Console.WriteLine(String.Format(
-          "[P {0}][IP:p {1}:{2}] Server is out of reach. Ping: {3}",
-          sData.Project,
-          sData.IP,
-          sData.port,
-          sData.pingICMP
-        ));
-      }
+      ServerList.ShakeData();
     }
 
     private static async Task<int> PingUnityAsync(string IP)
@@ -155,9 +172,9 @@ namespace FryLabsServerList
 
     public static void ShakeData()
     {
-      ServerList.servers.Sort((a, b) =>
+      ServerList.serversListProcessed.Sort((a, b) =>
       {
-        var diffPing = (int)(a.Ping - b.Ping);
+        var diffPing = (int)(a.ping - b.ping);
         if (diffPing != 0)
           return diffPing;
 
@@ -180,10 +197,10 @@ namespace FryLabsServerList
         return a.serverPlayers.current - b.serverPlayers.current;
       });
 
-      if (ServerList.servers.Count > 100)
+      if (ServerList.serversListProcessed.Count > 100)
       {
         ServerList.PingStop();
-        ServerList.servers.RemoveRange(100, ServerList.servers.Count - 100);
+        // ServerList.servers.RemoveRange(100, ServerList.servers.Count - 100);
       }
     }
 

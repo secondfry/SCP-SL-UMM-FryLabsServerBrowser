@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -117,7 +118,32 @@ namespace FryLabsServerList
       UI.scrollPos = GUILayout.BeginScrollView(UI.scrollPos, GUILayout.MinWidth(mWindowSize.x), GUILayout.MaxWidth(mWindowSize.x));
       GUILayout.BeginVertical();
 
-      foreach (ServerData sData in ServerList.servers)
+      GenerateServerList(ServerList.serversListProcessed);
+      GenerateServerList(ServerList.serversDictionary.Values);
+
+      GUILayout.EndVertical();
+      GUILayout.EndScrollView();
+
+      GUILayout.FlexibleSpace();
+      GUILayout.Space(5);
+
+      GUILayout.BeginHorizontal();
+      GUILayout.Label(UI.status);
+      GUILayout.FlexibleSpace();
+      if (GUILayout.Button("Close", UnityModManager.UI.button, GUILayout.ExpandWidth(false)))
+      {
+        ToggleWindow(false);
+      }
+      if (GUILayout.Button("Refresh", UnityModManager.UI.button, GUILayout.ExpandWidth(false)))
+      {
+        ServerList.Search();
+      }
+      GUILayout.EndHorizontal();
+    }
+
+    private void GenerateServerList(IEnumerable<ServerData> data)
+    {
+      foreach (ServerData sData in data)
       {
         GUILayout.Space(3);
 
@@ -126,7 +152,7 @@ namespace FryLabsServerList
         GUILayout.Label(sData.Project, UI.textLeft, GUILayout.Width(150), GUILayout.ExpandWidth(false));
         GUILayout.Label(sData.Info, UI.textInfo, GUILayout.MaxWidth(mWindowSize.x - 440));
         GUILayout.Label(sData.Players, UI.textCenter, GUILayout.Width(50), GUILayout.ExpandWidth(false));
-        GUILayout.Label(sData.Ping.ToString(), UI.textCenter, GUILayout.Width(25), GUILayout.ExpandWidth(false));
+        GUILayout.Label(sData.Ping, UI.textCenter, GUILayout.Width(25), GUILayout.ExpandWidth(false));
 
         if (GUILayout.Button("Discord", UI.button, GUILayout.ExpandWidth(false)))
         {
@@ -150,25 +176,6 @@ namespace FryLabsServerList
         GUILayout.Space(3);
         GUILayout.Label(GUIContent.none, UI.separator, GUILayout.ExpandWidth(true), GUILayout.Height(1f));
       }
-
-      GUILayout.EndVertical();
-      GUILayout.EndScrollView();
-
-      GUILayout.FlexibleSpace();
-      GUILayout.Space(5);
-
-      GUILayout.BeginHorizontal();
-      GUILayout.Label(UI.status);
-      GUILayout.FlexibleSpace();
-      if (GUILayout.Button("Close", UnityModManager.UI.button, GUILayout.ExpandWidth(false)))
-      {
-        ToggleWindow(false);
-      }
-      if (GUILayout.Button("Refresh", UnityModManager.UI.button, GUILayout.ExpandWidth(false)))
-      {
-        ServerList.Search();
-      }
-      GUILayout.EndHorizontal();
     }
 
     public void ToggleWindow()
