@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.Networking;
+using System.Threading.Tasks;
 
 namespace FryLabsServerList
 {
@@ -26,6 +27,8 @@ namespace FryLabsServerList
     private const int PING_THRESHOLD = 500;
     private const int SHOW_THRESHOLD = 500;
     private static List<Ping> pings = new List<Ping>();
+    private static List<Task> unityPingTasks = new List<Task>();
+    private static CancellationTokenSource cts;
 
     // etc
     private static Stopwatch _stopwatch = new Stopwatch();
@@ -56,8 +59,11 @@ namespace FryLabsServerList
       }
     }
 
-    private static void ServersParse()
+    private static async void ServersParse()
     {
+      ServerList.cts?.Dispose();
+      ServerList.cts = new CancellationTokenSource();
+
       // Prepare ping
       string pingData = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
       byte[] pingBuffer = Encoding.ASCII.GetBytes(pingData);
@@ -68,33 +74,32 @@ namespace FryLabsServerList
       {
         var parts = data.Split(';');
 
-        var ret = new ServerData();
-        ret.counter = ServerList.counter;
+        var sData = new ServerData();
+        sData.counter = ServerList.counter;
         ServerList.counter++;
 
-        ret.IP = parts[0];
-        ret.port = int.Parse(parts[1]);
+        sData.IP = parts[0];
+        sData.port = int.Parse(parts[1]);
 
         var fav = false;
         // TODO
         // try
         // {
-        //   if (this._window.favourites.TryGetValue(ret.Address, out ServerData cache))
+        //   if (this._window.favourites.TryGetValue(sData.Address, out ServerData cache))
         //   {
         //     fav = cache.IsFavourite;
         //   };
         // }
         // catch (NullReferenceException e) { }
-        ret.IsFavourite = fav;
+        sData.IsFavourite = fav;
 
-        ret.serverInfo = ServerInfo.Parse(parts[2]);
-        ret.serverPlayers = ServerPlayers.Parse(parts[3]);
+        sData.serverInfo = ServerInfo.Parse(parts[2]);
+        sData.serverPlayers = ServerPlayers.Parse(parts[3]);
 
-        // FIXME probably remove forever
-        // ServerList.PingTCP(ret, ServerList.PING_THRESHOLD);
-        ServerList.PingICMP(ret, ServerList.PING_THRESHOLD, pingBuffer, pingOptions);
+        // ServerList.PingICMPAsync(sData, ServerList.PING_THRESHOLD, pingBuffer, pingOptions);
+        ServerList.PingUnity(sData, ServerList.PING_THRESHOLD);
 
-        Thread.Sleep(0);
+        await Task.Delay(0);
       }
     }
 
@@ -104,46 +109,44 @@ namespace FryLabsServerList
       {
         p.SendAsyncCancel();
       }
+      ServerList.cts.Cancel();
     }
 
-    private static void PingICMP(ServerData ret, int pingTimeout, byte[] pingBuffer, PingOptions pingOptions)
+    // FIXME this is blocked by some providers as "ICMP flood"
+    // FIXME make selector between this and Unity
+    private static void PingICMPAsync(ServerData ret, int pingTimeout, byte[] pingBuffer, PingOptions pingOptions)
     {
       using (var ping = new Ping())
       {
         ServerList.pings.Add(ping);
 
+        string prefix = String.Format("[P {0}][IP:p {1}:{2}]", ret.Project, ret.IP, ret.port);
+
         ping.PingCompleted += (s, e) => {
-          if (e.Cancelled || e.Error != null)
+          if (e.Cancelled)
           {
+            Console.WriteLine(String.Format(
+              "{0} Ping was cancelled.",
+              prefix
+            ));
+
             ((AutoResetEvent)e.UserState).Set();
             return;
           }
 
-          if (e.Reply.Status == IPStatus.TimedOut)
-          {
-            ret.pingICMP = pingTimeout;
-          }
-          else
-          {
-            ret.pingICMP = e.Reply.RoundtripTime;
-          }
-
-          if (ret.pingICMP < ServerList.SHOW_THRESHOLD)
-          {
-            ServerList.servers.Add(ret);
-            ServerList.ShakeData();
-          }
-          else
+          if (e.Error != null)
           {
             Console.WriteLine(String.Format(
-              "[P {0}][IP:p {1}:{2}] Server is out of reach. Ping: {3}",
-              ret.Project,
-              ret.IP,
-              ret.port,
-              ret.pingICMP
+              "{0} Error! {1}",
+              prefix,
+              e.Error.ToString()
             ));
+
+            ((AutoResetEvent)e.UserState).Set();
+            return;
           }
-          
+
+          ServerList.ProcessICMPPing(ret, pingTimeout, e.Reply);
           ((AutoResetEvent)e.UserState).Set();
         };
 
@@ -153,7 +156,7 @@ namespace FryLabsServerList
           ping.SendAsync(IPAddress.Parse(ret.IP), pingTimeout, pingBuffer, pingOptions, pingWaiter);
           return;
         }
-        catch (FormatException e) {
+        catch (FormatException) {
           // server IP was probably server NS
           // we will retry call directly
         }
@@ -176,57 +179,93 @@ namespace FryLabsServerList
       }
     }
 
-    // FIXME IDK why this doesn't work
-    private static void PingTCP(ServerData ret, int pingTimeout)
+    private static void ProcessICMPPing(ServerData sData, int pingTimeout, PingReply reply)
     {
-      var times = new List<double>();
+      string prefix = String.Format("[P {0}][IP:p {1}:{2}]", sData.Project, sData.IP, sData.port);
 
-      for (int i = 0; i < 4; i++)
+      Console.WriteLine(String.Format(
+        "{0} Reply status: {1}",
+        prefix,
+        reply.Status.ToString()
+      ));
+
+      if (reply.Status == IPStatus.TimedOut)
       {
-        using (var sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
-        {
-          sock.Blocking = true;
-          sock.SendTimeout = pingTimeout;
-          sock.ReceiveTimeout = pingTimeout;
-          bool failed = false;
-
-          ServerList._stopwatch.Reset();
-          ServerList._stopwatch.Start();
-          try
-          {
-            sock.Connect(ret.IP, ret.port);
-          }
-          catch (SocketException e)
-          {
-            failed = true;
-          }
-          ServerList._stopwatch.Stop();
-
-          double time = failed ? 500 : ServerList._stopwatch.ElapsedMilliseconds;
-          times.Add(time);
-
-          sock.Close();
-
-          Thread.Sleep(0);
-        }
+        sData.pingICMP = pingTimeout;
+      }
+      else
+      {
+        sData.pingICMP = reply.RoundtripTime;
       }
 
-      ret.pingTCP = times.Average();
-      if (ret.pingTCP < ServerList.SHOW_THRESHOLD)
+      if (sData.pingICMP < ServerList.SHOW_THRESHOLD)
       {
-        ServerList.servers.Add(ret);
+        ServerList.servers.Add(sData);
         ServerList.ShakeData();
       }
       else
       {
         Console.WriteLine(String.Format(
           "[P {0}][IP:p {1}:{2}] Server is out of reach. Ping: {3}",
-          ret.Project,
-          ret.IP,
-          ret.port,
-          ret.pingICMP
+          sData.Project,
+          sData.IP,
+          sData.port,
+          sData.pingICMP
         ));
       }
+    }
+
+    private static async void PingUnity(ServerData sData, int pingTimeout)
+    {
+      string IP = sData.IP;
+      try
+      {
+        IPAddress.Parse(IP);
+      }
+      catch (FormatException)
+      {
+        IPHostEntry hostInfo = Dns.GetHostEntry(sData.IP);
+        IP = hostInfo.AddressList.First().ToString();
+      }
+
+      Task<int> pingTask = ServerList.PingUnityAsync(IP);
+      ServerList.unityPingTasks.Add(pingTask);
+
+      try
+      {
+        sData.pingICMP = await pingTask;
+      }
+      catch (OperationCanceledException)
+      {
+        sData.pingICMP = pingTimeout;
+      }
+
+      if (sData.pingICMP < ServerList.SHOW_THRESHOLD)
+      {
+        ServerList.servers.Add(sData);
+        ServerList.ShakeData();
+      }
+      else
+      {
+        Console.WriteLine(String.Format(
+          "[P {0}][IP:p {1}:{2}] Server is out of reach. Ping: {3}",
+          sData.Project,
+          sData.IP,
+          sData.port,
+          sData.pingICMP
+        ));
+      }
+    }
+
+    private static async Task<int> PingUnityAsync(string IP)
+    {
+      UnityEngine.Ping ping = new UnityEngine.Ping(IP);
+      while (!ping.isDone)
+      {
+        await Task.Delay(1000, ServerList.cts.Token);
+        ServerList.cts.Token.ThrowIfCancellationRequested();
+      }
+      return ping.time;
     }
 
     public static void ShakeData()
